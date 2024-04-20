@@ -8,18 +8,9 @@ const JWT = require("jsonwebtoken")
 // Import the User model for database operations
 const User = require('../models/user');
 const bcrypt = require("bcrypt");
+require('dotenv').config();
+const jwtSecret = process.env.JWT_SECRET;
 
-const hashPassword = async (req, res, next) => {
-    try {
-        if (req.body.password) {
-            const hashedPassword = await bcrypt.hash(req.body.password, 10);
-            req.body.password = hashedPassword;
-        }
-        next();
-        } catch (err) {
-            res.status(500).json({error: "error hashing password"});
-        }  
-};
 
 // Route for user login
 router.post('/login', async (req, res) => {
@@ -46,14 +37,6 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
-        // Generate a JWT token
-        function generateToken(user) {
-            return JWT.sign({
-                id: user._id,
-                email: user.email
-            }, jwtSecret, { expiresIn: "1h"});
-        }
-
         const token = generateToken(user)
 
         // Send the token in the response
@@ -66,7 +49,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Route for user registration
-router.post('/register', hashPassword, async (req, res) => {
+router.post('/register', async (req, res) => {
     const { fullname, email, password } = req.body;
 
     try {
@@ -92,11 +75,30 @@ router.post('/register', hashPassword, async (req, res) => {
     }
 });
 
+router.get('/protected', verifyToken, (req, res) => {
+    // Access the decoded payload from req.user
+    const { userId } = req.user;
+  
+    // Perform any additional logic or data retrieval based on the authenticated user
+    res.json({ message: 'Access granted', userId });
+  });
+  
+
 // Function to generate JWT token
+
 function generateToken(user) {
-    // Implement JWT token generation logic here
-    // For example, you can use the jsonwebtoken package
-    // Return the generated token
-}
+    const payload = {
+      id: user._id,
+      email: user.email,
+
+    };
+  
+    const options = {
+      expiresIn: '1h', // Token expiration time
+    };
+  
+    const token = JWT.sign(payload, jwtSecret, options);
+    return token;
+  }
 
 module.exports = router;
